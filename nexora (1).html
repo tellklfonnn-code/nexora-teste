@@ -1,0 +1,466 @@
+<title>NEXORA AI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tela única de celular. Cabeçalho fino, esfera de pontos ondulante ocupando o centro, linha de fala, barra de comando embaixo. */
+:root {
+  --bg: #02050c;
+  --panel: #07101f;
+  --line: #163352;
+  --fg: #d4f4ff;
+  --dim: #6088a8;
+  --cyan: #28e1ff;
+  --blue: #1e6eff;
+  --violet: #7a3ce6;
+  --magenta: #d732c8;
+  --font-display: "Chakra Petch", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  padding-bottom: 44px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow: hidden;
+}
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.mark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.32em;
+  color: var(--cyan);
+  text-shadow: 0 0 14px rgba(40, 225, 255, 0.45);
+}
+.status {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+}
+.status[data-s="ouvindo"], .status[data-s="falando"] { color: var(--cyan); border-color: var(--cyan); }
+.status[data-s="pensando"] { color: var(--magenta); border-color: var(--magenta); }
+#wrap { position: relative; flex: 1; min-height: 0; touch-action: none; }
+#stage { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.talk { min-height: 74px; display: flex; flex-direction: column; gap: 6px; }
+.talk p { margin: 0; line-height: 1.45; max-width: 60ch; }
+#you { color: var(--dim); font-size: 12px; }
+#bot { color: var(--fg); font-size: 15px; }
+.bar { display: flex; gap: 8px; }
+input, button {
+  font: inherit;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-height: 46px;
+}
+input { flex: 1; min-width: 0; padding: 0 12px; font-size: 16px; }
+input::placeholder { color: var(--dim); }
+button { padding: 0 14px; color: var(--cyan); cursor: pointer; letter-spacing: 0.08em; }
+button:active { background: var(--line); }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+#boot { border-color: var(--violet); color: var(--fg); background: linear-gradient(180deg, #1a1650, #0c0f33); }
+#mic[aria-pressed="true"] { background: var(--cyan); color: var(--bg); }
+.hr { display: flex; align-items: center; gap: 8px; }
+.mini { min-height: 30px; font-size: 10px; padding: 0 8px; }
+@media (max-width: 400px) { .mark { font-size: 20px; letter-spacing: 0.2em; } }
+#lock {
+  position: fixed; inset: 0; z-index: 50; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  padding-top: 24px; padding-bottom: 44px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+#ltitle { font-size: 16px; letter-spacing: 0.2em; }
+#lmsg { margin: 0; min-height: 1.4em; text-align: center; color: var(--dim); }
+.dots { display: flex; gap: 14px; }
+.dots i { width: 14px; height: 14px; border: 1px solid var(--cyan); border-radius: 50%; }
+.dots i.on { background: var(--cyan); box-shadow: 0 0 10px rgba(40, 225, 255, 0.6); }
+.pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 10px; }
+.pad button { min-height: 60px; font-size: 20px; padding: 0; }
+.row2 { display: flex; gap: 8px; }
+.row2 button { flex: 1; min-height: 42px; }
+#camBtn[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--cyan); }
+#cam { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.frame {
+  position: relative; height: 100%; max-width: 100%; aspect-ratio: 3 / 4; overflow: hidden;
+  background: #000; border: 1px solid var(--blue); box-shadow: 0 0 26px rgba(30, 110, 255, 0.35);
+}
+#vid { display: block; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: saturate(0.65) contrast(1.05) brightness(0.95); }
+.tint { position: absolute; inset: 0; background: rgba(20, 80, 255, 0.16); pointer-events: none; }
+.grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(40, 160, 255, 0.16) 0 1px, transparent 1px 6px),
+    linear-gradient(90deg, rgba(40, 160, 255, 0.10) 1px, transparent 1px) 0 0 / 44px 100%;
+}
+.sweep {
+  position: absolute; left: 0; right: 0; top: -100%; height: 100%; pointer-events: none;
+  background: linear-gradient(180deg, transparent 78%, rgba(40, 225, 255, 0.28) 97%, var(--cyan) 100%);
+  animation: sweepY 3.4s linear infinite;
+}
+.sweepx {
+  position: absolute; top: 0; bottom: 0; left: -100%; width: 100%; pointer-events: none;
+  background: linear-gradient(90deg, transparent 88%, rgba(30, 110, 255, 0.35) 98%, var(--blue) 100%);
+  animation: sweepX 5.2s linear infinite;
+}
+@keyframes sweepY { from { transform: translateY(0); } to { transform: translateY(200%); } }
+@keyframes sweepX { from { transform: translateX(0); } to { transform: translateX(200%); } }
+.corner { position: absolute; width: 24px; height: 24px; border: 2px solid var(--cyan); pointer-events: none; }
+.corner.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.corner.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.corner.bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+.corner.br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+.camtag {
+  position: absolute; left: 12px; bottom: 36px; font-size: 11px; letter-spacing: 0.2em; color: var(--cyan);
+  display: flex; align-items: center; gap: 8px; text-shadow: 0 0 8px rgba(40, 225, 255, 0.6);
+}
+.camtag i { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); animation: blip 1.2s ease-in-out infinite; }
+@keyframes blip { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .sweep, .sweepx { display: none; } .camtag i { animation: none; } }
+</style>
+
+<header>
+  <span class="mark">NEXORA</span>
+  <span class="hr">
+    <button id="relock" class="mini" type="button" aria-label="Bloquear o NEXORA">TRAVAR</button>
+    <span class="status" id="status" data-s="pronto">PRONTO</span>
+  </span>
+</header>
+
+<div id="wrap">
+  <canvas id="stage" aria-label="Esfera do NEXORA"></canvas>
+  <div id="cam" hidden>
+    <div class="frame">
+      <video id="vid" playsinline muted autoplay></video>
+      <div class="tint"></div><div class="grid"></div><div class="sweep"></div><div class="sweepx"></div>
+      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+      <div class="camtag"><i></i>ESCANEANDO ROSTO</div>
+    </div>
+  </div>
+</div>
+
+<div class="talk" aria-live="polite">
+  <p id="you"></p>
+  <p id="bot">Sistemas em espera. Toque em Ativar para ligar a voz.</p>
+</div>
+
+<div class="row2">
+  <button id="boot" type="button">ATIVAR NEXORA</button>
+  <button id="camBtn" type="button" aria-pressed="false">CÂMERA</button>
+</div>
+
+<form class="bar" id="form" autocomplete="off">
+  <input id="cmd" type="text" placeholder="Digite um comando" aria-label="Comando">
+  <button id="mic" type="button" aria-pressed="false" aria-label="Falar com o NEXORA">MIC</button>
+  <button type="submit" aria-label="Enviar">ENVIAR</button>
+</form>
+
+<div id="lock" role="dialog" aria-modal="true" aria-labelledby="ltitle">
+  <span class="mark" id="ltitle">NEXORA BLOQUEADO</span>
+  <p id="lmsg"></p>
+  <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+  <div class="pad" id="pad">
+    <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+    <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+    <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+    <span></span><button type="button" data-k="0">0</button><button type="button" data-k="del" aria-label="Apagar">&larr;</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+  var wrap = document.getElementById('wrap');
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var S = 300, dpr = 1;
+
+  function resize() {
+    var r = wrap.getBoundingClientRect();
+    S = Math.max(160, Math.floor(Math.min(r.width, r.height)));
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.style.width = S + 'px'; cv.style.height = S + 'px';
+    cv.width = S * dpr; cv.height = S * dpr;
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap);
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ---------- geometria: anéis de latitude com pontos, deformados por ondas ---------- */
+  var pts = [], k;
+  for (k = 0; k < 9000; k++) pts.push([(Math.random() - 0.5) * Math.PI, Math.random() * 6.2832, Math.random()]);
+
+  /* paleta: azul, ciano, violeta, magenta; 4 níveis de brilho */
+  var HUES = [[205, 228, 255], [255, 255, 255], [150, 190, 255], [110, 150, 240]];
+  var LEVELS = [0.16, 0.36, 0.62, 0.92];
+  var PAL = [], buckets = [];
+  HUES.forEach(function (h) {
+    LEVELS.forEach(function (a) { PAL.push('rgba(' + h[0] + ',' + h[1] + ',' + h[2] + ',' + a + ')'); buckets.push([]); });
+  });
+
+  /* olho interno: pupila (núcleo denso) e íris (anel com raios), sempre voltados para quem olha */
+  function gauss() { return (Math.random() + Math.random() + Math.random() + Math.random() - 2) / 2; }
+  var core = [], iris = [], q, s2;
+  for (q = 0; q < 3400; q++) core.push([gauss() * 0.5, gauss() * 0.62, Math.random()]);
+
+  /* ---------- estado ---------- */
+  var state = 'pronto', energy = 0.4, ry = 0, rx = 0.08, sn = 0, tt = 0, last = 0;
+  var lookX = 0, lookY = 0, tLookX = 0, tLookY = 0;
+  var nextBlink = 1800, blinkStart = -1000;
+  var statusEl = document.getElementById('status');
+  function setState(s) { state = s; statusEl.textContent = s.toUpperCase(); statusEl.setAttribute('data-s', s); }
+
+  wrap.addEventListener('pointermove', function (e) {
+    var r = wrap.getBoundingClientRect();
+    tLookX = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width / 2)));
+    tLookY = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height / 2)));
+  });
+  wrap.addEventListener('pointerleave', function () { tLookX = 0; tLookY = 0; });
+
+  /* ---------- desenho ---------- */
+  function frame(t) {
+    var dt = Math.min(0.05, (t - last) / 1000); last = t;
+    if (camOn) { requestAnimationFrame(frame); return; }
+    var target = state === 'falando' ? 1.0 : state === 'ouvindo' ? 0.75 : state === 'pensando' ? 0.9 : 0.35;
+    energy += (target - energy) * 0.06;
+    tt += dt * (reduced ? 0.25 : 1) * (0.55 + energy * 1.3);
+    ry += dt * (reduced ? 0.05 : 0.22) * (1 + energy);
+    lookX += (tLookX - lookX) * 0.07; lookY += (tLookY - lookY) * 0.07;
+    if (state === 'falando') sn += (Math.random() - sn) * 0.2; else sn *= 0.92;
+
+    if (!reduced && t > nextBlink) { blinkStart = t; nextBlink = t + 2800 + Math.random() * 3500; }
+    var bt = t - blinkStart, blink = bt >= 0 && bt < 200 ? Math.sin(Math.PI * bt / 200) : 0;
+    var eyeY = 1;
+
+    var R = S * 0.36, c = S / 2;
+    var yaw = ry + lookX * 0.5, pitch = rx + lookY * 0.3;
+    var cy = Math.cos(yaw), sy = Math.sin(yaw), cx = Math.cos(pitch), sx = Math.sin(pitch);
+    var amp = 0.012 + 0.03 * energy + 0.05 * sn;
+    var cyan = state === 'ouvindo' ? 0.25 : 0.45;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, S, S);
+    ctx.globalCompositeOperation = 'lighter';
+
+
+    var b;
+    for (b = 0; b < buckets.length; b++) buckets[b].length = 0;
+    var unit = S / 360, i;
+    for (i = 0; i < pts.length; i++) {
+      var la = pts[i][0], lo = pts[i][1];
+      var d = Math.sin(lo * 2 + la * 3 + tt * 0.9) * 0.5 + Math.sin(lo * 3 - la * 2 - tt * 0.7) * 0.35 + Math.sin(la * 5 + lo + tt * 1.3) * 0.25;
+      var rr = 1 + amp * d + (pts[i][2] - 0.5) * 0.03, cl = Math.cos(la);
+      var x = rr * cl * Math.cos(lo), y = rr * Math.sin(la), z = rr * cl * Math.sin(lo);
+      var x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
+      var y2 = y * cx - z1 * sx, z2 = y * sx + z1 * cx;
+      var pr = 1.8 / (1.8 - z2 * 0.45);
+      var px = c + x1 * R * pr, py = c + y2 * R * pr * eyeY;
+      var front = (z2 + 1.3) / 2.6; if (front < 0) front = 0; if (front > 1) front = 1;
+      var hue = pts[i][2] > 0.93 ? 1 : (pts[i][2] < 0.25 ? 2 : 0);
+      var lvl = front < 0.3 ? 0 : front < 0.55 ? 1 : front < 0.8 ? 2 : 3;
+      if (hue === 1 && lvl < 3) lvl++;
+      buckets[hue * 4 + lvl].push(px, py, unit * (0.45 + 0.75 * front));
+    }
+    for (b = 0; b < buckets.length; b++) {
+      var arr = buckets[b]; if (!arr.length) continue;
+      ctx.fillStyle = PAL[b];
+      ctx.beginPath();
+      for (var j = 0; j < arr.length; j += 3) { ctx.moveTo(arr[j] + arr[j + 2], arr[j + 1]); ctx.arc(arr[j], arr[j + 1], arr[j + 2], 0, 6.2832); }
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- voz e comandos ---------- */
+  var youEl = document.getElementById('you'), botEl = document.getElementById('bot');
+  var voices = [];
+  function loadVoices() { try { voices = speechSynthesis.getVoices(); } catch (e) {} }
+  if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+  function pickVoice() {
+    var pt = voices.filter(function (v) { return /^pt/i.test(v.lang); });
+    var br = pt.filter(function (v) { return /pt[-_]BR/i.test(v.lang); });
+    return br.filter(function (v) { return /google|luciana|francisca|maria|antonio|thiago/i.test(v.name); })[0] || br[0] || pt[0] || null;
+  }
+  function speak(text) {
+    if (!('speechSynthesis' in window)) { setState('pronto'); return; }
+    try {
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'pt-BR'; u.rate = 1; u.pitch = 0.85;
+      var v = pickVoice(); if (v) u.voice = v;
+      u.onstart = function () { setState('falando'); };
+      u.onend = u.onerror = function () { setState('pronto'); };
+      speechSynthesis.speak(u);
+    } catch (e) { setState('pronto'); }
+  }
+  function say(text) { botEl.textContent = text; speak(text); }
+
+  function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function answer(raw) {
+    var t = norm(raw), d = new Date();
+    if (/camera/.test(t)) {
+      if (/(fech|desl|par[ae]|tir[ae])/.test(t)) { camStop(); return 'Câmera desligada.'; }
+      camStart(); return 'Abrindo a câmera.';
+    }
+    if (/\b(horas?|que horas)\b/.test(t)) {
+      var h = d.getHours(), m = d.getMinutes();
+      return 'Agora são ' + h + (h === 1 ? ' hora' : ' horas') + ' e ' + m + (m === 1 ? ' minuto.' : ' minutos.');
+    }
+    if (/\b(data|dia de hoje|que dia)\b/.test(t))
+      return 'Hoje é ' + d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '.';
+    if (/(seu nome|quem e voce|quem voce)/.test(t)) return 'Eu sou o NEXORA, seu assistente pessoal.';
+    if (/(tudo bem|como vai|como voce esta)/.test(t)) return 'Todos os sistemas funcionando perfeitamente.';
+    if (/\b(oi|ola|e ai|bom dia|boa tarde|boa noite)\b/.test(t)) return 'Olá! Sistemas online. Como posso ajudar?';
+    if (/(ajuda|o que voce faz)/.test(t)) return 'Por enquanto respondo hora, data e conversas simples. A inteligência artificial será conectada nos próximos passos.';
+    return 'Entendi: ' + raw + '. Ainda não tenho a inteligência artificial conectada, mas já estou ouvindo e falando.';
+  }
+  function handle(text) {
+    text = (text || '').trim(); if (!text) return;
+    youEl.textContent = '> ' + text;
+    setState('pensando');
+    setTimeout(function () { say(answer(text)); }, 450);
+  }
+
+  var boot = document.getElementById('boot'), form = document.getElementById('form'), cmd = document.getElementById('cmd');
+  boot.addEventListener('click', function () {
+    boot.hidden = true;
+    say('NEXORA online. Todos os sistemas ativos. Em que posso ajudar?');
+  });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = cmd.value; cmd.value = ''; boot.hidden = true; handle(v);
+  });
+
+  var mic = document.getElementById('mic'), SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null;
+  function micOff() { mic.setAttribute('aria-pressed', 'false'); }
+  mic.addEventListener('click', function () {
+    boot.hidden = true;
+    if (!SR) { botEl.textContent = 'Reconhecimento de voz indisponível neste navegador. Digite o comando.'; return; }
+    if (rec) { try { rec.stop(); } catch (e) {} return; }
+    try {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      rec = new SR(); rec.lang = 'pt-BR'; rec.interimResults = false; rec.maxAlternatives = 1;
+      rec.onresult = function (e) { handle(e.results[0][0].transcript); };
+      rec.onerror = function (e) {
+        setState('pronto'); micOff(); rec = null;
+        botEl.textContent = (e.error === 'not-allowed' || e.error === 'service-not-allowed')
+          ? 'Microfone bloqueado nesta página. Digite o comando.' : 'Não consegui ouvir. Tente de novo.';
+      };
+      rec.onend = function () { rec = null; micOff(); if (state === 'ouvindo') setState('pronto'); };
+      rec.start(); mic.setAttribute('aria-pressed', 'true'); setState('ouvindo');
+    } catch (e) { rec = null; micOff(); setState('pronto'); botEl.textContent = 'Não consegui ligar o microfone. Digite o comando.'; }
+  });
+  /* ---------- câmera frontal (o vídeo fica só na tela, nada é gravado nem enviado) ---------- */
+  var camEl = document.getElementById('cam'), vid = document.getElementById('vid'), camBtn = document.getElementById('camBtn');
+  var camOn = false, camStream = null, camBusy = false;
+  function camMsg(txt) { botEl.textContent = txt; }
+  function camStop() {
+    if (camStream) { camStream.getTracks().forEach(function (tr) { tr.stop(); }); camStream = null; }
+    try { vid.srcObject = null; } catch (e) {}
+    camOn = false; camEl.hidden = true; cv.hidden = false;
+    camBtn.setAttribute('aria-pressed', 'false'); camBtn.textContent = 'CÂMERA';
+  }
+  function camStart() {
+    if (camOn || camBusy) return;
+    var md = navigator.mediaDevices;
+    if (!md || !md.getUserMedia) { camMsg('Este navegador não abre a câmera aqui. Use o Chrome e um endereço https.'); return; }
+    camBusy = true; camMsg('Pedindo permissão da câmera. Toque em Permitir.');
+    md.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }).then(function (s) {
+      camBusy = false;
+      if (!lockEl.hidden || document.hidden) { s.getTracks().forEach(function (tr) { tr.stop(); }); return; }
+      camStream = s; vid.srcObject = s;
+      var p = vid.play(); if (p && p.catch) p.catch(function () {});
+      camOn = true; camEl.hidden = false; cv.hidden = true;
+      camBtn.setAttribute('aria-pressed', 'true'); camBtn.textContent = 'FECHAR CÂMERA';
+      camMsg('Câmera ligada. Nada é gravado nem enviado.');
+      s.getVideoTracks()[0].addEventListener('ended', camStop);
+    }).catch(function (err) {
+      camBusy = false;
+      var n = err && err.name, framed = false;
+      try { framed = window.top !== window.self; } catch (e) { framed = true; }
+      if (framed && (n === 'NotAllowedError' || n === 'SecurityError')) camMsg('Esta página de teste não tem permissão de câmera. Ela funciona quando o NEXORA estiver no seu próprio site https, aberto no Chrome.');
+      else if (n === 'NotAllowedError' || n === 'SecurityError') camMsg('Câmera bloqueada. No Chrome, toque no ícone ao lado do endereço, depois em Permissões, e escolha Permitir para Câmera.');
+      else if (n === 'NotFoundError' || n === 'OverconstrainedError') camMsg('Não encontrei a câmera frontal.');
+      else if (n === 'NotReadableError') camMsg('A câmera está em uso por outro app. Feche o outro app e tente de novo.');
+      else camMsg('Não consegui abrir a câmera.');
+    });
+  }
+  camBtn.addEventListener('click', function () {
+    boot.hidden = true;
+    if (camOn) { camStop(); camMsg('Câmera desligada.'); } else camStart();
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden && camOn) camStop(); });
+
+  /* ---------- trava com PIN (guardado só neste navegador, como hash) ---------- */
+  var lockEl = document.getElementById('lock'), dotsEl = document.getElementById('dots');
+  var lmsg = document.getElementById('lmsg'), ltitle = document.getElementById('ltitle');
+  var pin = '', first = '', fails = 0, blockedUntil = 0, away = 0, KEY = 'nexora_pin_v1';
+  function loadPin() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
+  function savePin(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+  var saved = loadPin(), mode = saved ? 'enter' : 'create';
+  function hashPin(p, salt) {
+    try {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + p)).then(function (b) {
+        return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      });
+    } catch (e) { return Promise.resolve('x' + btoa(salt + ':' + p)); }
+  }
+  function paintDots() { var d = dotsEl.children; for (var j = 0; j < 4; j++) d[j].className = j < pin.length ? 'on' : ''; }
+  function lockText() {
+    ltitle.textContent = mode === 'enter' ? 'NEXORA BLOQUEADO' : 'CRIAR PIN';
+    lmsg.textContent = mode === 'enter' ? 'Digite seu PIN de 4 números.' : mode === 'create' ? 'Escolha um PIN de 4 números.' : 'Repita o PIN para confirmar.';
+  }
+  function lockNow() {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    camStop();
+    saved = loadPin(); mode = saved ? 'enter' : 'create'; pin = ''; first = '';
+    paintDots(); lockText(); lockEl.hidden = false;
+  }
+  function unlock() { lockEl.hidden = true; pin = ''; fails = 0; paintDots(); }
+  function wrong(msg) { pin = ''; paintDots(); lmsg.textContent = msg; }
+  function submitPin() {
+    if (mode === 'create') { first = pin; pin = ''; mode = 'confirm'; paintDots(); lockText(); return; }
+    if (mode === 'confirm') {
+      if (pin !== first) { mode = 'create'; first = ''; pin = ''; paintDots(); ltitle.textContent = 'CRIAR PIN'; lmsg.textContent = 'Os PINs não conferem. Escolha de novo.'; return; }
+      var salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      hashPin(pin, salt).then(function (h) { savePin({ salt: salt, hash: h }); unlock(); });
+      return;
+    }
+    if (!saved) { mode = 'create'; pin = ''; paintDots(); lockText(); return; }
+    hashPin(pin, saved.salt).then(function (h) {
+      if (h === saved.hash) { unlock(); return; }
+      fails++;
+      if (fails >= 5) { blockedUntil = Date.now() + 30000; fails = 0; wrong('Muitas tentativas. Aguarde 30 segundos.'); }
+      else wrong('PIN incorreto. Tentativas restantes: ' + (5 - fails) + '.');
+    });
+  }
+  document.getElementById('pad').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null; if (!b) return;
+    var v = b.getAttribute('data-k');
+    if (Date.now() < blockedUntil) { lmsg.textContent = 'Aguarde alguns segundos.'; return; }
+    if (v === 'del') { pin = pin.slice(0, -1); paintDots(); return; }
+    if (pin.length < 4) { pin += v; paintDots(); if (pin.length === 4) setTimeout(submitPin, 120); }
+  });
+  document.getElementById('relock').addEventListener('click', lockNow);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) away = Date.now();
+    else if (away && Date.now() - away > 60000 && lockEl.hidden) lockNow();
+  });
+  lockText(); paintDots();
+})();
+</script>
